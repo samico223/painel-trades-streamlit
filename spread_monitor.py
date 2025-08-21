@@ -50,45 +50,25 @@ def get_stock_quote(ticker):
         return data if data.get('s') == 'ok' else None
     except requests.exceptions.RequestException: return None
 
-# NOVA E MELHORADA FUNÇÃO RENDER_BAR
 def render_bar(current_price, put_strike, call_strike):
-    """
-    Renderiza uma barra que representa a posição do preço atual
-    entre o strike da Put (0%) e da Call (100%).
-    """
-    if not all([current_price, put_strike, call_strike]) or put_strike >= call_strike:
-        return ""
-
-    # Calcula a posição percentual do preço no range [Put, Call]
+    if not all([current_price, put_strike, call_strike]) or put_strike >= call_strike: return ""
     total_range = call_strike - put_strike
     position_from_put = current_price - put_strike
     progress_percent = (position_from_put / total_range) * 100
-    
-    # Garante que o indicador fique dentro dos limites da barra
     progress_percent_clamped = max(0, min(100, progress_percent))
-
-    # Define a cor do indicador com base na proximidade do centro (50%)
     deviation = abs(progress_percent - 50)
-    if deviation <= 10: color = "#4CAF50" # Verde
-    elif deviation <= 25: color = "#FFC107" # Amarelo
-    else: color = "#F44336" # Vermelho
-
+    if deviation <= 10: color = "#4CAF50"
+    elif deviation <= 25: color = "#FFC107"
+    else: color = "#F44336"
+    
+    # O HTML da barra em si não muda
     bar_html = f"""
     <div style="position: relative; width: 100%; height: 25px; background-color: #f0f2f6; border: 1px solid #ccc; border-radius: 5px; font-family: sans-serif;">
         <div style="position: absolute; left: 50%; top: 0; bottom: 0; width: 2px; background-color: #aaa;"></div>
-        
         <div title="Posição do Preço Atual: {current_price:.2f}" style="
-            position: absolute; 
-            left: {progress_percent_clamped}%; 
-            top: 50%; 
-            transform: translate(-50%, -50%); 
-            width: 16px; 
-            height: 16px; 
-            background-color: {color}; 
-            border: 2px solid white; 
-            border-radius: 50%;
-            box-shadow: 0 0 5px rgba(0,0,0,0.5);
-            z-index: 1;">
+            position: absolute; left: {progress_percent_clamped}%; top: 50%; transform: translate(-50%, -50%); 
+            width: 16px; height: 16px; background-color: {color}; border: 2px solid white; 
+            border-radius: 50%; box-shadow: 0 0 5px rgba(0,0,0,0.5); z-index: 1;">
         </div>
     </div>
     """
@@ -103,7 +83,6 @@ st.markdown("## 🦅 Painel de Monitoramento de Operações")
 
 if 'trades' not in st.session_state: st.session_state.trades = load_trades()
 
-# --- Barra Lateral ---
 with st.sidebar:
     st.header("Adicionar Nova Operação")
     with st.form(key="add_trade_form", clear_on_submit=True):
@@ -120,22 +99,17 @@ with st.sidebar:
                     "center_price": center_price, "id": f"{ticker}_{datetime.now().timestamp()}",
                     "alert_sent": False
                 }
-                st.session_state.trades.append(new_trade)
-                save_trades(st.session_state.trades)
+                st.session_state.trades.append(new_trade); save_trades(st.session_state.trades)
                 st.success(f"Trade de {ticker} adicionado!"); st.rerun()
 
-# --- Dashboard ---
 if not st.session_state.trades:
     st.info("Adicione operações na barra lateral para começar.")
 else:
     headers = ["TICKER", "CHNG", "PUTS", "PRICE", "CALLS", "Posição no Range", "% do Centro", "DEL"]
-    cols = st.columns([1, 1, 1, 1, 1, 2, 1, 0.5])
-    for col, header in zip(cols, headers): col.markdown(f"**{header}**")
+    cols = st.columns([1, 1, 1, 1, 1, 2, 1, 0.5]); [c.markdown(f"**{h}**") for c, h in zip(cols, headers)]
         
     for i, trade in enumerate(st.session_state.trades):
-        quote_data = get_stock_quote(trade['ticker'])
-        cols = st.columns([1, 1, 1, 1, 1, 2, 1, 0.5])
-        
+        quote_data = get_stock_quote(trade['ticker']); cols = st.columns([1, 1, 1, 1, 1, 2, 1, 0.5])
         current_price = quote_data.get('last', [None])[0] if quote_data else None
         ticker_color = "inherit"
         if current_price:
@@ -146,11 +120,9 @@ else:
                     side = "PUT" if current_price <= trade['put_strike'] else "CALL"
                     msg = (f"🚨 *ALERTA DE STRIKE* 🚨\n\n*Ativo:* `{trade['ticker']}`\n*Preço:* `${current_price:.2f}`\n\nAtingiu o strike da *{side}* em `${trade[f'{side.lower()}_strike']:.2f}`.")
                     send_telegram_message(msg)
-                    st.session_state.trades[i]['alert_sent'] = True
-                    save_trades(st.session_state.trades)
+                    st.session_state.trades[i]['alert_sent'] = True; save_trades(st.session_state.trades)
             elif trade.get('alert_sent', False):
-                st.session_state.trades[i]['alert_sent'] = False
-                save_trades(st.session_state.trades)
+                st.session_state.trades[i]['alert_sent'] = False; save_trades(st.session_state.trades)
 
         cols[0].markdown(f"**<span style='font-size:1.1em; color:{ticker_color};'>{trade['ticker']}</span>**", unsafe_allow_html=True)
         cols[2].markdown(f"<div style='text-align: right; padding-right: 5px;'>{trade['put_strike']:.2f} &lt;==</div>", unsafe_allow_html=True)
@@ -158,19 +130,20 @@ else:
 
         if current_price:
             open_price = quote_data.get('open', [None])[0]
-            chng_percent = ((current_price - open_price) / open_price) * 100 if open_price else 0
+            chng_percent = ((current_price - open_price) / open_price) * 100 if open_price and open_price > 0 else 0
             chng_color = "green" if chng_percent >= 0 else "red"
             cols[1].markdown(f'<span style="color:{chng_color};">{chng_percent:.2f}%</span>', unsafe_allow_html=True)
 
-            center_price = trade['center_price']
-            div_percent = ((current_price - center_price) / center_price) * 100
+            div_percent = ((current_price - trade['center_price']) / trade['center_price']) * 100
             div_color = "green" if div_percent >= 0 else "red"
             percent_to_put = ((trade['put_strike'] - current_price) / current_price) * 100
             percent_to_call = ((trade['call_strike'] - current_price) / current_price) * 100
 
             cols[3].markdown(f"**<span style='font-size:1.1em;'>{current_price:.2f}</span>**", unsafe_allow_html=True)
-            # AQUI USAMOS A NOVA FUNÇÃO RENDER_BAR
+            
+            # LINHA CORRIGIDA com unsafe_allow_html=True
             cols[5].markdown(render_bar(current_price, trade['put_strike'], trade['call_strike']), unsafe_allow_html=True)
+            
             cols[5].markdown(f'''<div style="font-size: 0.8em; display: flex; justify-content: space-between; margin-top: -5px;">
                 <span style="color: #d14040; font-weight: bold;">{percent_to_put:.1f}%</span>
                 <span style="color: #1f7a1f; font-weight: bold;">+{percent_to_call:.1f}%</span></div>''', unsafe_allow_html=True)
@@ -180,8 +153,7 @@ else:
             st.toast(f'Falha ao buscar dados para {trade["ticker"]}', icon="⚠️")
 
         if cols[7].button("❌", key=f"del_{trade['id']}"):
-            st.session_state.trades.pop(i)
-            save_trades(st.session_state.trades)
+            st.session_state.trades.pop(i); save_trades(st.session_state.trades)
             st.rerun()
 
         st.markdown('<hr style="margin-top:0.5rem; margin-bottom:0.5rem;">', unsafe_allow_html=True)
