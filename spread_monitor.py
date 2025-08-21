@@ -61,7 +61,6 @@ def render_bar(current_price, put_strike, call_strike):
     elif deviation <= 25: color = "#FFC107"
     else: color = "#F44336"
     
-    # O HTML da barra em si não muda
     bar_html = f"""
     <div style="position: relative; width: 100%; height: 25px; background-color: #f0f2f6; border: 1px solid #ccc; border-radius: 5px; font-family: sans-serif;">
         <div style="position: absolute; left: 50%; top: 0; bottom: 0; width: 2px; background-color: #aaa;"></div>
@@ -106,7 +105,10 @@ if not st.session_state.trades:
     st.info("Adicione operações na barra lateral para começar.")
 else:
     headers = ["TICKER", "CHNG", "PUTS", "PRICE", "CALLS", "Posição no Range", "% do Centro", "DEL"]
-    cols = st.columns([1, 1, 1, 1, 1, 2, 1, 0.5]); [c.markdown(f"**{h}**") for c, h in zip(cols, headers)]
+    cols = st.columns([1, 1, 1, 1, 1, 2, 1, 0.5])
+    # CORREÇÃO APLICADA AQUI
+    for col, header in zip(cols, headers):
+        col.markdown(f"**{header}**")
         
     for i, trade in enumerate(st.session_state.trades):
         quote_data = get_stock_quote(trade['ticker']); cols = st.columns([1, 1, 1, 1, 1, 2, 1, 0.5])
@@ -140,10 +142,7 @@ else:
             percent_to_call = ((trade['call_strike'] - current_price) / current_price) * 100
 
             cols[3].markdown(f"**<span style='font-size:1.1em;'>{current_price:.2f}</span>**", unsafe_allow_html=True)
-            
-            # LINHA CORRIGIDA com unsafe_allow_html=True
             cols[5].markdown(render_bar(current_price, trade['put_strike'], trade['call_strike']), unsafe_allow_html=True)
-            
             cols[5].markdown(f'''<div style="font-size: 0.8em; display: flex; justify-content: space-between; margin-top: -5px;">
                 <span style="color: #d14040; font-weight: bold;">{percent_to_put:.1f}%</span>
                 <span style="color: #1f7a1f; font-weight: bold;">+{percent_to_call:.1f}%</span></div>''', unsafe_allow_html=True)
