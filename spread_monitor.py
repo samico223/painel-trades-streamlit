@@ -111,7 +111,11 @@ with st.sidebar:
 if not st.session_state.trades: st.info("Adicione operações na barra lateral para começar.")
 else:
     headers = ["TICKER", "CHNG", "PUTS", "PRICE", "CALLS", "Posição no Range", "% do Centro", "DEL"]
-    cols = st.columns([1, 1, 1, 1, 1, 2, 1, 0.5]); [c.markdown(f"**{h}**") for c, h in zip(cols, headers)]
+    cols = st.columns([1, 1, 1, 1, 1, 2, 1, 0.5])
+    
+    # CORREÇÃO DEFINITIVA APLICADA AQUI
+    for col, header in zip(cols, headers):
+        col.markdown(f"**{header}**")
 
     for trade in st.session_state.trades:
         quote_data = get_stock_quote(trade['ticker']); cols = st.columns([1, 1, 1, 1, 1, 2, 1, 0.5])
